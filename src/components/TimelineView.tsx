@@ -29,7 +29,7 @@ export const CATEGORY_CONFIG: Record<
   ticket: { name: '门票娱乐', icon: Ticket, color: '#06d6a0', bg: 'bg-[#06d6a0]/15 text-[#06d6a0] border-[#06d6a0]/30' },
   shopping: { name: '免税购物', icon: ShoppingBag, color: '#f72585', bg: 'bg-[#f72585]/15 text-[#f72585] border-[#f72585]/30' },
   activity: { name: '一日游/体验', icon: Compass, color: '#4895ef', bg: 'bg-[#4895ef]/15 text-[#4895ef] border-[#4895ef]/30' },
-  general: { name: '日常杂项', icon: CreditCard, color: '#a0aec0', bg: 'bg-slate-500/15 text-slate-400 border-slate-500/30' },
+  general: { name: '日常杂项', icon: CreditCard, color: '#a0aec0', bg: 'bg-slate-500/15 text-slate-500 dark:text-slate-400 border-slate-500/30' },
 };
 
 export const TimelineView: React.FC = () => {
@@ -40,7 +40,7 @@ export const TimelineView: React.FC = () => {
 
   if (!activeTrip) {
     return (
-      <div className="text-center py-16 text-slate-400">
+      <div className="text-center py-16 text-slate-500 dark:text-slate-400">
         <p>暂无选中的行程</p>
       </div>
     );
@@ -72,14 +72,14 @@ export const TimelineView: React.FC = () => {
   return (
     <div className="space-y-4 pb-20">
       {/* Trip Header Summary Card */}
-      <div className="p-4 rounded-2xl bg-gradient-to-br from-[#1d2638] to-[#141b27] border border-[#2c3954] shadow-lg relative overflow-hidden">
+      <div className="p-4 rounded-2xl bg-white dark:bg-gradient-to-br dark:from-[#1d2638] dark:to-[#141b27] border border-slate-200 dark:border-[#2c3954] shadow-sm dark:shadow-lg relative overflow-hidden">
         <div className="relative z-10 flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold text-[#ff6b6b] tracking-wider uppercase">
               {activeTrip.destination}
             </span>
-            <h2 className="text-lg font-black text-white">{activeTrip.title}</h2>
-            <div className="flex items-center space-x-2 text-xs text-slate-400 mt-1">
+            <h2 className="text-lg font-black text-slate-900 dark:text-white">{activeTrip.title}</h2>
+            <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
               <span>{activeTrip.members.length} 人同行</span>
               <span>•</span>
               <span>{expenses.length} 笔支出</span>
@@ -87,12 +87,12 @@ export const TimelineView: React.FC = () => {
           </div>
 
           <div className="text-right">
-            <span className="text-[10px] text-slate-400 block uppercase font-bold">总花费折合</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase font-bold">总花费折合</span>
             <span className="text-xl font-black text-[#06d6a0]">
               {activeTrip.currencySymbol} {totalSpent.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
             </span>
             {activeTrip.budget && (
-              <span className="text-[10px] text-slate-400 block mt-0.5">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
                 预算 {activeTrip.currencySymbol} {activeTrip.budget.toLocaleString()} (
                 {Math.round((totalSpent / activeTrip.budget) * 100)}%)
               </span>
@@ -110,7 +110,7 @@ export const TimelineView: React.FC = () => {
             placeholder="搜索费用名称 (例如：拉面、特急车票)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#161c28] dark:bg-[#161c28] light:bg-white text-xs text-white dark:text-white light:text-slate-900 border border-[#28354d] dark:border-[#28354d] light:border-slate-200 focus:outline-none focus:border-[#ff6b6b]"
+            className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-[#161c28] text-xs text-slate-900 dark:text-white border border-slate-200 dark:border-[#28354d] focus:outline-none focus:border-[#ff6b6b] placeholder:text-slate-400 shadow-xs"
           />
         </div>
 
@@ -120,8 +120,8 @@ export const TimelineView: React.FC = () => {
             onClick={() => setSelectedCategory('all')}
             className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 transition-all ${
               selectedCategory === 'all'
-                ? 'bg-[#ff6b6b] text-white'
-                : 'bg-[#161c28] text-slate-400 hover:text-white border border-[#28354d]'
+                ? 'bg-[#ff6b6b] text-white shadow-xs'
+                : 'bg-white dark:bg-[#161c28] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-[#28354d]'
             }`}
           >
             全部
@@ -135,8 +135,8 @@ export const TimelineView: React.FC = () => {
                 onClick={() => setSelectedCategory(catKey)}
                 className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 transition-all ${
                   isSelected
-                    ? 'bg-[#ff6b6b] text-white font-bold'
-                    : 'bg-[#161c28] text-slate-400 hover:text-white border border-[#28354d]'
+                    ? 'bg-[#ff6b6b] text-white font-bold shadow-xs'
+                    : 'bg-white dark:bg-[#161c28] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-[#28354d]'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -149,9 +149,9 @@ export const TimelineView: React.FC = () => {
 
       {/* Timeline Stream */}
       {Object.keys(grouped).length === 0 ? (
-        <div className="text-center py-12 bg-[#161c28] rounded-2xl border border-[#28354d] p-6">
-          <Utensils className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-          <p className="text-sm font-bold text-slate-300">暂无符合条件的费用记录</p>
+        <div className="text-center py-12 bg-white dark:bg-[#161c28] rounded-2xl border border-slate-200 dark:border-[#28354d] p-6 shadow-xs">
+          <Utensils className="w-8 h-8 text-slate-400 dark:text-slate-600 mx-auto mb-2" />
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-300">暂无符合条件的费用记录</p>
           <p className="text-xs text-slate-500 mt-1">点击下方中间的 “➕ 记一笔” 快速添加吧！</p>
           <button
             onClick={() => setIsDrawerOpen(true)}
@@ -169,11 +169,11 @@ export const TimelineView: React.FC = () => {
               <div key={dateStr} className="space-y-2">
                 {/* Date Header */}
                 <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-300">
+                  <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
                     <Calendar className="w-3.5 h-3.5 text-[#ff6b6b]" />
                     <span>{dateStr}</span>
                   </div>
-                  <span className="text-[11px] font-bold text-slate-400">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                     当日小计: {activeTrip.currencySymbol} {dayTotal.toFixed(2)}
                   </span>
                 </div>
@@ -189,7 +189,7 @@ export const TimelineView: React.FC = () => {
                     return (
                       <div
                         key={exp.id}
-                        className="p-3.5 rounded-2xl bg-[#161c28] dark:bg-[#161c28] light:bg-white border border-[#26334a] dark:border-[#26334a] light:border-slate-200 hover:border-[#ff6b6b]/40 transition-all space-y-2.5"
+                        className="p-3.5 rounded-2xl bg-white dark:bg-[#161c28] border border-slate-200 dark:border-[#26334a] hover:border-[#ff6b6b]/50 transition-all space-y-2.5 shadow-xs"
                       >
                         <div className="flex items-center justify-between space-x-3">
                           {/* Left: Category Icon + Title + Tags */}
@@ -199,24 +199,24 @@ export const TimelineView: React.FC = () => {
                             </div>
 
                             <div className="truncate">
-                              <h4 className="font-bold text-sm text-white dark:text-white light:text-slate-900 truncate">
+                              <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">
                                 {exp.title}
                               </h4>
 
-                              <div className="flex items-center space-x-2 text-[11px] text-slate-400 mt-1">
+                              <div className="flex items-center space-x-2 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                                 {/* Payer Avatar Tag */}
                                 <span className="flex items-center space-x-1">
                                   <span
                                     style={{ backgroundColor: payer?.avatarColor || '#666' }}
                                     className="w-2.5 h-2.5 rounded-full inline-block"
                                   />
-                                  <span className="font-medium text-slate-300">{payer?.name || '未知付款人'} 付款</span>
+                                  <span className="font-medium text-slate-700 dark:text-slate-300">{payer?.name || '未知付款人'} 付款</span>
                                 </span>
 
                                 <span>•</span>
 
                                 {/* Split Info */}
-                                <span className="flex items-center space-x-1 text-slate-400">
+                                <span className="flex items-center space-x-1 text-slate-500 dark:text-slate-400">
                                   <Users className="w-3 h-3" />
                                   <span>{splitCount}人分摊</span>
                                 </span>
@@ -246,7 +246,7 @@ export const TimelineView: React.FC = () => {
 
                               {/* Original Local Currency */}
                               {exp.currency !== activeTrip.baseCurrency && (
-                                <div className="text-[10px] text-slate-400 font-mono">
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                                   原币: {exp.currency} {exp.amount.toLocaleString()}
                                 </div>
                               )}
@@ -264,7 +264,7 @@ export const TimelineView: React.FC = () => {
                             {/* Delete Button */}
                             <button
                               onClick={() => deleteExpense(exp.id)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
                               title="删除该笔支出"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -273,14 +273,14 @@ export const TimelineView: React.FC = () => {
                         </div>
 
                         {/* Individual Split Breakdown Chips */}
-                        <div className="pt-2 border-t border-[#1f293d] flex items-center space-x-1.5 overflow-x-auto no-scrollbar text-[10px]">
-                          <span className="text-slate-500 font-bold shrink-0">分摊详情:</span>
+                        <div className="pt-2 border-t border-slate-100 dark:border-[#1f293d] flex items-center space-x-1.5 overflow-x-auto no-scrollbar text-[10px]">
+                          <span className="text-slate-400 dark:text-slate-500 font-bold shrink-0">分摊详情:</span>
                           {Object.entries(exp.splitDetails).map(([mId, share]) => {
                             const member = memberMap.get(mId);
                             return (
                               <span
                                 key={mId}
-                                className="px-2 py-0.5 rounded-md bg-[#0e121b] text-slate-300 border border-[#243046] shrink-0 flex items-center space-x-1 font-mono"
+                                className="px-2 py-0.5 rounded-md bg-slate-50 dark:bg-[#0e121b] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#243046] shrink-0 flex items-center space-x-1 font-mono"
                               >
                                 <span
                                   style={{ backgroundColor: member?.avatarColor || '#666' }}
