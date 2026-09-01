@@ -7,7 +7,7 @@ export const BottomNav: React.FC = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0e121b]/95 backdrop-blur-lg border-t border-slate-200 dark:border-[#1f293d] transition-colors">
-      <div className="max-w-lg mx-auto px-4 h-16 flex items-center justify-around relative">
+      <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-around relative">
         {/* Tab 1: Trips */}
         <button
           onClick={() => setActiveTab('trips')}

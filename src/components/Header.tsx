@@ -1,23 +1,22 @@
 import React, { useState } from 'react';
 import { useTrip } from '../context/TripContext';
-import { Plane, Moon, Sun, Copy, Check, Wifi, WifiOff, ChevronDown } from 'lucide-react';
+import { Plane, Moon, Sun, QrCode, Wifi, WifiOff, ChevronDown } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { theme, toggleTheme, activeTrip, trips, setActiveTripId, isOnline } = useTrip();
-  const [copied, setCopied] = useState(false);
+  const {
+    theme,
+    toggleTheme,
+    activeTrip,
+    trips,
+    setActiveTripId,
+    isOnline,
+    setIsShareModalOpen,
+  } = useTrip();
   const [showDropdown, setShowDropdown] = useState(false);
-
-  const handleCopyLink = () => {
-    if (!activeTrip) return;
-    const url = `${window.location.origin}${window.location.pathname}?trip=${activeTrip.tripCode}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0e121b]/95 backdrop-blur-md border-b border-slate-200 dark:border-[#1f293d] px-4 py-2.5 transition-colors">
-      <div className="max-w-lg mx-auto flex items-center justify-between">
+      <div className="max-w-5xl mx-auto flex items-center justify-between">
         {/* Logo & Trip Selector */}
         <div className="relative flex items-center space-x-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#ff6b6b] to-[#ff9e7d] flex items-center justify-center text-white shadow-md shadow-[#ff6b6b]/20 shrink-0">
@@ -82,19 +81,15 @@ export const Header: React.FC = () => {
 
         {/* Right Controls: Trip Code + Online Pill + Theme Switcher */}
         <div className="flex items-center space-x-2">
-          {/* Trip Code Pill */}
+          {/* Trip Code Pill (Opens QR Code Share Modal) */}
           {activeTrip && (
             <button
-              onClick={handleCopyLink}
-              title="点击复制本行程邀请链接"
-              className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-[#161c28] text-slate-800 dark:text-slate-200 text-[11px] font-mono border border-slate-200 dark:border-[#26334a] hover:border-[#ff6b6b]/50 transition-all active:scale-95"
+              onClick={() => setIsShareModalOpen(true)}
+              title="点击查看二维码与分享行程"
+              className="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-[#161c28] text-slate-800 dark:text-slate-200 text-[11px] font-mono border border-slate-200 dark:border-[#26334a] hover:border-[#ff6b6b]/50 transition-all active:scale-95 shadow-xs"
             >
+              <QrCode className="w-3.5 h-3.5 text-[#ff6b6b]" />
               <span className="text-[#ff6b6b] font-bold">{activeTrip.tripCode}</span>
-              {copied ? (
-                <Check className="w-3 h-3 text-[#06d6a0]" />
-              ) : (
-                <Copy className="w-3 h-3 opacity-60" />
-              )}
             </button>
           )}
 

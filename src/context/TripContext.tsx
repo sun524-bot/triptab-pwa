@@ -42,8 +42,13 @@ interface TripContextType {
   editingExpense: Expense | null;
   setEditingExpense: (exp: Expense | null) => void;
   createNewTrip: (title: string, destination: string, baseCurrency: CurrencyCode, budget?: number) => Promise<string>;
+  archiveTrip: (id: string) => Promise<void>;
+  unarchiveTrip: (id: string) => Promise<void>;
+  deleteTrip: (id: string) => Promise<void>;
   addMemberToTrip: (tripId: string, memberName: string) => Promise<void>;
   joinTripByCode: (code: string, nickname: string) => Promise<boolean>;
+  isShareModalOpen: boolean;
+  setIsShareModalOpen: (open: boolean) => void;
   isOnline: boolean;
 }
 
@@ -57,6 +62,7 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [activeTab, setActiveTab] = useState<TabType>('timeline');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -328,6 +334,40 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const archiveTrip = async (id: string) => {
+    const target = trips.find((t) => t.id === id);
+    if (!target) return;
+    const updated = { ...target, isArchived: true, updatedAt: new Date().toISOString() };
+    await db.trips.put(updated);
+    setTrips((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    if (activeTripId === id) {
+      const remaining = trips.filter((t) => t.id !== id && !t.isArchived);
+      if (remaining.length > 0) setActiveTripId(remaining[0].id);
+    }
+  };
+
+  const unarchiveTrip = async (id: string) => {
+    const target = trips.find((t) => t.id === id);
+    if (!target) return;
+    const updated = { ...target, isArchived: false, updatedAt: new Date().toISOString() };
+    await db.trips.put(updated);
+    setTrips((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    setActiveTripId(id);
+  };
+
+  const deleteTrip = async (id: string) => {
+    await db.trips.delete(id);
+    await db.expenses.where('tripId').equals(id).delete();
+    setTrips((prev) => prev.filter((t) => t.id !== id));
+    setAllExpenses((prev) => prev.filter((e) => e.tripId !== id));
+    if (activeTripId === id) {
+      const remaining = trips.filter((t) => t.id !== id);
+      if (remaining.length > 0) {
+        setActiveTripId(remaining[0].id);
+      }
+    }
+  };
+
   return (
     <TripContext.Provider
       value={{
@@ -343,6 +383,8 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
         allExpenses,
         isDrawerOpen,
         setIsDrawerOpen,
+        isShareModalOpen,
+        setIsShareModalOpen,
         customRates,
         updateCustomRate,
         addExpense,
@@ -351,6 +393,9 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
         editingExpense,
         setEditingExpense,
         createNewTrip,
+        archiveTrip,
+        unarchiveTrip,
+        deleteTrip,
         addMemberToTrip,
         joinTripByCode,
         isOnline,
