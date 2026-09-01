@@ -1,0 +1,18 @@
+{
+  "name": "TripTab - Travel Expense Sharing",
+  "short_name": "TripTab",
+  "description": "Modern offline-first travel expense splitter and debt simplifier for group trips.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e121b",
+  "theme_color": "#ff6b6b",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
