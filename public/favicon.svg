@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="sunsetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff6b6b" />
+      <stop offset="50%" stop-color="#ff8e53" />
+      <stop offset="100%" stop-color="#ffa07a" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="30" fill="url(#sunsetGrad)" />
+  <path d="M60 25 L88 78 L60 68 L32 78 Z" fill="#ffffff" transform="rotate(45 60 60)" />
+</svg>
