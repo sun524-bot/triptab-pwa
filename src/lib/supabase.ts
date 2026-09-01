@@ -18,3 +18,24 @@ export const supabase = isSupabaseConfigured
       },
     })
   : null;
+
+/**
+ * Creates a trip-scoped Supabase client that automatically attaches the
+ * 'x-room-code' header matching the Trip's tripCode.
+ * This satisfies the PostgreSQL RLS policy on the shared 'rooms' table.
+ */
+export function getTripSupabaseClient(tripCode?: string) {
+  if (!isSupabaseConfigured) return null;
+  const cleanCode = (tripCode || '').trim().toUpperCase();
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: {
+      headers: cleanCode ? { 'x-room-code': cleanCode } : {},
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
+  });
+}
+

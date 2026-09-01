@@ -9,7 +9,7 @@ import type {
   Member,
   PiggyDeposit,
 } from '../types';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { isSupabaseConfigured, getTripSupabaseClient } from '../lib/supabase';
 import { convertCurrency, getCurrencySymbol } from '../engine/currencyConverter';
 
 export type TabType = 'trips' | 'timeline' | 'settle' | 'settings';
@@ -148,9 +148,11 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
     expensesToSync: Expense[],
     depositsToSync: PiggyDeposit[] = []
   ) => {
-    if (!isSupabaseConfigured || !supabase || !tripToSync.tripCode) return;
+    if (!isSupabaseConfigured || !tripToSync.tripCode) return;
     try {
-      await supabase.from('rooms').upsert(
+      const client = getTripSupabaseClient(tripToSync.tripCode);
+      if (!client) return;
+      await client.from('rooms').upsert(
         {
           room_code: tripToSync.tripCode.toUpperCase(),
           title: tripToSync.title,
@@ -223,9 +225,11 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else {
             setIsIdentityModalOpen(true);
           }
-        } else if (isSupabaseConfigured && supabase) {
+        } else if (isSupabaseConfigured) {
           try {
-            const { data } = await supabase
+            const client = getTripSupabaseClient(normalizedCode);
+            if (!client) return;
+            const { data } = await client
               .from('rooms')
               .select('*')
               .eq('room_code', normalizedCode)
@@ -285,9 +289,11 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Realtime subscription for active trip
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase || !activeTrip?.tripCode) return;
+    if (!isSupabaseConfigured || !activeTrip?.tripCode) return;
+    const client = getTripSupabaseClient(activeTrip.tripCode);
+    if (!client) return;
 
-    const channel = supabase
+    const channel = client
       .channel(`trip-realtime-${activeTrip.tripCode}`)
       .on(
         'postgres_changes',
@@ -327,7 +333,7 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .subscribe();
 
     return () => {
-      if (supabase) supabase.removeChannel(channel);
+      client.removeChannel(channel);
     };
   }, [activeTrip?.tripCode]);
 
@@ -628,9 +634,11 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let found = trips.find((t) => t.tripCode.toUpperCase() === trimmedCode);
 
     // If not found in local IndexedDB, look up in Supabase
-    if (!found && isSupabaseConfigured && supabase) {
+    if (!found && isSupabaseConfigured) {
       try {
-        const { data } = await supabase
+        const client = getTripSupabaseClient(trimmedCode);
+        if (!client) return false;
+        const { data } = await client
           .from('rooms')
           .select('*')
           .eq('room_code', trimmedCode)
