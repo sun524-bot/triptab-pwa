@@ -24,7 +24,7 @@ export const SEED_TRIP: Trip = {
   currencySymbol: 'RM',
   budget: 15000,
   members: [
-    { id: 'm-me', name: 'Me (You)', avatarColor: '#ff6b6b', isOwner: true },
+    { id: 'm-me', name: '房主 (Host)', avatarColor: '#ff6b6b', isOwner: true },
     { id: 'm-alex', name: 'Alex', avatarColor: '#4cc9f0' },
     { id: 'm-clara', name: 'Clara', avatarColor: '#ffd166' },
     { id: 'm-daniel', name: 'Daniel', avatarColor: '#06d6a0' },

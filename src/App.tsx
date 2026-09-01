@@ -8,6 +8,7 @@ import { AddExpenseDrawer } from './components/AddExpenseDrawer';
 import { SettlementView } from './components/SettlementView';
 import { SettingsView } from './components/SettingsView';
 import { ShareTripModal } from './components/ShareTripModal';
+import { JoinIdentityModal } from './components/JoinIdentityModal';
 
 const MainContent: React.FC = () => {
   const { activeTab } = useTrip();
@@ -42,6 +43,7 @@ const MainContent: React.FC = () => {
 
       <AddExpenseDrawer />
       <ShareTripModal />
+      <JoinIdentityModal />
     </main>
   );
 };

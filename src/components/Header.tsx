@@ -11,6 +11,8 @@ export const Header: React.FC = () => {
     setActiveTripId,
     isOnline,
     setIsShareModalOpen,
+    currentMemberId,
+    setIsIdentityModalOpen,
   } = useTrip();
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -79,14 +81,32 @@ export const Header: React.FC = () => {
           )}
         </div>
 
-        {/* Right Controls: Trip Code + Online Pill + Theme Switcher */}
-        <div className="flex items-center space-x-2">
+        {/* Right Controls: Identity + Trip Code + Online Pill + Theme Switcher */}
+        <div className="flex items-center space-x-1.5">
+          {/* My Identity Pill */}
+          {activeTrip && (
+            <button
+              onClick={() => setIsIdentityModalOpen(true)}
+              title="点击切换当前我是哪位成员"
+              className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-[#161c28] text-slate-800 dark:text-slate-200 text-xs border border-slate-200 dark:border-[#26334a] hover:border-[#06d6a0] transition-all active:scale-95 shadow-xs"
+            >
+              <span
+                style={{ backgroundColor: activeTrip.members.find((m) => m.id === currentMemberId)?.avatarColor || '#06d6a0' }}
+                className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+              />
+              <span className="font-bold truncate max-w-[75px] text-[11px]">
+                {activeTrip.members.find((m) => m.id === currentMemberId)?.name || '我是谁'}
+              </span>
+              <span className="text-[9px] text-[#06d6a0] font-bold">(我)</span>
+            </button>
+          )}
+
           {/* Trip Code Pill (Opens QR Code Share Modal) */}
           {activeTrip && (
             <button
               onClick={() => setIsShareModalOpen(true)}
               title="点击查看二维码与分享行程"
-              className="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-[#161c28] text-slate-800 dark:text-slate-200 text-[11px] font-mono border border-slate-200 dark:border-[#26334a] hover:border-[#ff6b6b]/50 transition-all active:scale-95 shadow-xs"
+              className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-[#161c28] text-slate-800 dark:text-slate-200 text-[11px] font-mono border border-slate-200 dark:border-[#26334a] hover:border-[#ff6b6b]/50 transition-all active:scale-95 shadow-xs"
             >
               <QrCode className="w-3.5 h-3.5 text-[#ff6b6b]" />
               <span className="text-[#ff6b6b] font-bold">{activeTrip.tripCode}</span>

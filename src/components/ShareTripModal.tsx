@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTrip } from '../context/TripContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { X, Copy, Check, MessageSquare, QrCode } from 'lucide-react';
 
 export const ShareTripModal: React.FC = () => {
-  const { activeTrip, isShareModalOpen, setIsShareModalOpen } = useTrip();
+  const { activeTrip, expenses, isShareModalOpen, setIsShareModalOpen, syncTripToCloud } = useTrip();
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
 
+  // When modal opens, guarantee the trip and expenses are pushed to Supabase immediately
+  useEffect(() => {
+    if (isShareModalOpen && activeTrip) {
+      syncTripToCloud(activeTrip, expenses);
+    }
+  }, [isShareModalOpen, activeTrip, expenses]);
+
   if (!isShareModalOpen || !activeTrip) return null;
 
-  const shareUrl = `${window.location.origin}${window.location.pathname}?trip=${activeTrip.tripCode}`;
+  // Clean shareable URL without duplicate parameters
+  const baseUrl = `${window.location.origin}${window.location.pathname}`.replace(/\/+$/, '');
+  const shareUrl = `${baseUrl}/?trip=${activeTrip.tripCode.toUpperCase()}`;
   const inviteText = `🛫 邀请你加入【${activeTrip.title}】旅行记账本！无需注册或输入密码，点击链接直接加入：\n${shareUrl}`;
 
   const handleCopyUrl = () => {

@@ -15,13 +15,14 @@ export const AddExpenseDrawer: React.FC = () => {
     editingExpense,
     setEditingExpense,
     customRates,
+    currentMemberId,
   } = useTrip();
 
   const [title, setTitle] = useState('');
   const [amountStr, setAmountStr] = useState('');
   const [currency, setCurrency] = useState<CurrencyCode>(() => activeTrip?.baseCurrency || 'MYR');
   const [category, setCategory] = useState<ExpenseCategory>('food');
-  const [paidById, setPaidById] = useState<string>(() => activeTrip?.members[0]?.id || 'm-me');
+  const [paidById, setPaidById] = useState<string>(() => currentMemberId || activeTrip?.members[0]?.id || 'm-me');
   const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [splitType] = useState<SplitType>('equal');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(() =>
@@ -45,12 +46,12 @@ export const AddExpenseDrawer: React.FC = () => {
       setAmountStr('');
       setCurrency(activeTrip.baseCurrency);
       setCategory('food');
-      setPaidById(activeTrip.members[0]?.id || 'm-me');
+      setPaidById(currentMemberId || activeTrip.members[0]?.id || 'm-me');
       setDate(new Date().toISOString().split('T')[0]);
       setSelectedMemberIds(activeTrip.members.map((m) => m.id));
       setReceiptImage(undefined);
     }
-  }, [editingExpense, activeTrip]);
+  }, [editingExpense, activeTrip, currentMemberId]);
 
   if (!isDrawerOpen || !activeTrip) return null;
 
