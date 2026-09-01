@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { useTrip } from '../context/TripContext';
-import { calculateMemberBalances, simplifyDebts, generateCalculationSteps } from '../engine/debtSimplifier';
+import {
+  calculateMemberBalances,
+  calculatePiggySummary,
+  generateCalculationSteps,
+} from '../engine/debtSimplifier';
 import confetti from 'canvas-confetti';
 import {
   Scale,
@@ -13,18 +17,20 @@ import {
   TrendingDown,
   X,
   UserCheck,
+  PiggyBank,
 } from 'lucide-react';
 
 export const SettlementView: React.FC = () => {
-  const { activeTrip, expenses, currentMemberId, setIsIdentityModalOpen } = useTrip();
+  const { activeTrip, expenses, piggyDeposits, currentMemberId, setIsIdentityModalOpen } = useTrip();
   const [copied, setCopied] = useState(false);
   const [showMathModal, setShowMathModal] = useState(false);
   const [settledMap, setSettledMap] = useState<Record<string, boolean>>({});
 
   if (!activeTrip) return null;
 
-  const balances = calculateMemberBalances(activeTrip, expenses);
-  const transfers = simplifyDebts(balances, activeTrip.baseCurrency, activeTrip.currencySymbol);
+  const piggySummary = calculatePiggySummary(activeTrip, expenses, piggyDeposits);
+  const balances = calculateMemberBalances(activeTrip, expenses, piggyDeposits);
+  const transfers = piggySummary.residualTransfers;
   const mathSteps = generateCalculationSteps(activeTrip, expenses);
   const memberMap = new Map(activeTrip.members.map((m) => [m.id, m]));
 
@@ -50,20 +56,39 @@ export const SettlementView: React.FC = () => {
     text += `📅 结算时间: ${new Date().toLocaleDateString('zh-CN')}\n`;
     text += `💰 总支出: ${activeTrip.currencySymbol} ${totalTripSpend.toFixed(2)}\n`;
     text += `👥 同行人数: ${activeTrip.members.length} 人\n`;
+
+    if (piggySummary.totalDeposited > 0) {
+      text += `--------------------------------\n`;
+      text += `🐷 【公账基金收支状况】\n`;
+      text += `• 累计集资: ${activeTrip.currencySymbol} ${piggySummary.totalDeposited.toFixed(2)}\n`;
+      text += `• 公账已付: ${activeTrip.currencySymbol} ${piggySummary.totalSpent.toFixed(2)}\n`;
+      text += `• 信封剩余现金: ${activeTrip.currencySymbol} ${piggySummary.remainingCash.toFixed(2)}\n`;
+
+      if (Object.keys(piggySummary.cashRefunds).length > 0) {
+        text += `💵 现场从公账信封领出现金退款：\n`;
+        activeTrip.members.forEach((m) => {
+          const refund = piggySummary.cashRefunds[m.id] || 0;
+          if (refund > 0) {
+            text += `  ➔ ${m.name}: 领回现金 ${activeTrip.currencySymbol} ${refund.toFixed(2)}\n`;
+          }
+        });
+      }
+    }
+
     text += `--------------------------------\n`;
-    text += `📊 【成员净结余情况】\n`;
+    text += `📊 【成员总结余情况 (含公账+自费)】\n`;
 
     balances.forEach((b) => {
       const sign = b.netBalance >= 0 ? '+' : '';
       const isMe = b.memberId === currentMemberId ? ' (我)' : '';
-      text += `• ${b.name}${isMe}: ${sign}${activeTrip.currencySymbol} ${b.netBalance.toFixed(2)} (付了 ${b.totalPaid.toFixed(2)}, 应出 ${b.totalShare.toFixed(2)})\n`;
+      text += `• ${b.name}${isMe}: ${sign}${activeTrip.currencySymbol} ${b.netBalance.toFixed(2)} (集资 ${b.piggyDeposited.toFixed(2)}, 垫付 ${b.totalPaid.toFixed(2)}, 应出 ${b.totalShare.toFixed(2)})\n`;
     });
 
     text += `--------------------------------\n`;
     text += `⚡ 【最简转账结算 (共 ${transfers.length} 笔)】\n`;
 
     if (transfers.length === 0) {
-      text += `✨ 本行程已完全结清，无人相互欠款！\n`;
+      text += `✨ 现场公账现金退款已平账，全员 0 笔额外个人转账！\n`;
     } else {
       transfers.forEach((t, i) => {
         const fromName = memberMap.get(t.fromId)?.name || t.fromId;
@@ -139,7 +164,7 @@ export const SettlementView: React.FC = () => {
               )}
             </div>
             <p className="text-[10px] text-slate-500 dark:text-slate-400">
-              已垫付: {activeTrip.currencySymbol}{myBalance.totalPaid.toFixed(2)} • 个人应出: {activeTrip.currencySymbol}{myBalance.totalShare.toFixed(2)}
+              公账出资: {activeTrip.currencySymbol}{myBalance.piggyDeposited.toFixed(2)} • 个人垫付: {activeTrip.currencySymbol}{myBalance.totalPaid.toFixed(2)} • 个人应出: {activeTrip.currencySymbol}{myBalance.totalShare.toFixed(2)}
             </p>
           </div>
 
@@ -153,22 +178,101 @@ export const SettlementView: React.FC = () => {
         </div>
       )}
 
+      {/* Piggy Bank Cash Settlement Card */}
+      {piggySummary.totalDeposited > 0 && (
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-slate-50 to-orange-500/10 dark:from-amber-500/15 dark:via-[#161c28] dark:to-orange-500/15 border border-amber-500/30 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center">
+                <PiggyBank className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  公账基金现场现金退款方案
+                </h3>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  优先报销垫付，剩余现金全额退回
+                </p>
+              </div>
+            </div>
+
+            <div className="text-right">
+              <span className="text-[10px] font-bold text-slate-400 block uppercase">公账剩余现金</span>
+              <span className="text-base font-black text-amber-500 font-mono">
+                {activeTrip.currencySymbol} {piggySummary.remainingCash.toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          {/* Cash Refund List */}
+          <div className="space-y-1.5 pt-1 border-t border-amber-500/20">
+            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+              💵 现场从公账信封直接领取现金：
+            </span>
+
+            {Object.keys(piggySummary.cashRefunds).length === 0 ? (
+              <p className="text-xs text-slate-400 py-1">公账现金已全部用完，无现金可退。</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {activeTrip.members.map((m) => {
+                  const refund = piggySummary.cashRefunds[m.id] || 0;
+                  const isMe = m.id === currentMemberId;
+                  return (
+                    <div
+                      key={m.id}
+                      className={`p-2 rounded-xl border flex items-center justify-between text-xs ${
+                        isMe
+                          ? 'bg-[#06d6a0]/15 border-[#06d6a0] font-bold'
+                          : 'bg-white dark:bg-[#0e121b] border-slate-200 dark:border-[#243046]'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-1.5 truncate">
+                        <span
+                          style={{ backgroundColor: m.avatarColor }}
+                          className="w-4 h-4 rounded-full text-[9px] font-black text-white flex items-center justify-center shrink-0"
+                        >
+                          {m.name.slice(0, 1).toUpperCase()}
+                        </span>
+                        <span className="truncate text-slate-900 dark:text-white">
+                          {m.name}
+                          {isMe && <span className="text-[#06d6a0] ml-0.5">(你)</span>}
+                        </span>
+                      </div>
+
+                      <span className="font-mono font-bold text-[#06d6a0] shrink-0">
+                        {refund > 0 ? `+${activeTrip.currencySymbol}${refund.toFixed(2)}` : '无退款'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Simplified Transfers Card */}
       <div className="p-4 rounded-2xl bg-white dark:bg-[#161c28] border border-slate-200 dark:border-[#28354d] shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
             <Scale className="w-4 h-4 text-[#ff6b6b]" />
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">最简还款方案</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              {piggySummary.totalDeposited > 0 ? '剩余个人转账清账' : '最简还款方案'}
+            </h3>
           </div>
           <span className="text-[11px] text-[#06d6a0] font-bold">
-            只需 {transfers.length} 步清账
+            {transfers.length === 0 ? '0 笔转账 · 已完全平账' : `需 ${transfers.length} 步清账`}
           </span>
         </div>
 
         {transfers.length === 0 ? (
           <div className="text-center py-6 text-slate-400">
             <CheckCircle2 className="w-8 h-8 text-[#06d6a0] mx-auto mb-1.5" />
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">本行程账目已完全平衡，无需任何转账！</p>
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+              {piggySummary.totalDeposited > 0
+                ? '✨ 公账现金退款已完全平账，无需任何额外转账！'
+                : '本行程账目已完全平衡，无需任何转账！'}
+            </p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -308,8 +412,8 @@ export const SettlementView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-white/5">
-                  <span>累计垫付: {activeTrip.currencySymbol} {b.totalPaid.toFixed(2)}</span>
-                  <span>个人应出: {activeTrip.currencySymbol} {b.totalShare.toFixed(2)}</span>
+                  <span>公账出资: {activeTrip.currencySymbol}{b.piggyDeposited.toFixed(2)} • 个人垫付: {activeTrip.currencySymbol}{b.totalPaid.toFixed(2)}</span>
+                  <span>个人总应出: {activeTrip.currencySymbol}{b.totalShare.toFixed(2)}</span>
                 </div>
               </div>
             );

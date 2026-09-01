@@ -1,6 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db, SEED_TRIP, SEED_EXPENSES } from '../db/dexie';
-import type { Trip, Expense, CurrencyCode, ExpenseCategory, SplitType, Member } from '../types';
+import { db, SEED_TRIP, SEED_EXPENSES, SEED_PIGGY_DEPOSITS } from '../db/dexie';
+import type {
+  Trip,
+  Expense,
+  CurrencyCode,
+  ExpenseCategory,
+  SplitType,
+  Member,
+  PiggyDeposit,
+} from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { convertCurrency, getCurrencySymbol } from '../engine/currencyConverter';
 
@@ -12,7 +20,7 @@ export interface AddExpenseInput {
   category: ExpenseCategory;
   amount: number;
   currency: CurrencyCode;
-  paidById: string;
+  paidById: string; // memberId or 'piggy-bank'
   date: string;
   splitType: SplitType;
   selectedMemberIds?: string[];
@@ -32,10 +40,14 @@ export interface TripContextType {
   activeTrip: Trip | undefined;
   expenses: Expense[];
   allExpenses: Expense[];
+  piggyDeposits: PiggyDeposit[];
+  allPiggyDeposits: PiggyDeposit[];
   isDrawerOpen: boolean;
   setIsDrawerOpen: (open: boolean) => void;
   isShareModalOpen: boolean;
   setIsShareModalOpen: (open: boolean) => void;
+  isDepositModalOpen: boolean;
+  setIsDepositModalOpen: (open: boolean) => void;
   customRates: Partial<Record<CurrencyCode, number>>;
   updateCustomRate: (currency: CurrencyCode, rate: number) => void;
   addExpense: (input: AddExpenseInput) => Promise<void>;
@@ -50,11 +62,24 @@ export interface TripContextType {
   addMemberToTrip: (tripId: string, memberName: string) => Promise<void>;
   joinTripByCode: (code: string, nickname: string) => Promise<boolean>;
   isOnline: boolean;
-  syncTripToCloud: (tripToSync: Trip, expensesToSync: Expense[]) => Promise<void>;
+  syncTripToCloud: (tripToSync: Trip, expensesToSync: Expense[], depositsToSync?: PiggyDeposit[]) => Promise<void>;
   currentMemberId: string;
   setCurrentMemberId: (id: string) => void;
   isIdentityModalOpen: boolean;
   setIsIdentityModalOpen: (open: boolean) => void;
+  addPiggyDeposit: (
+    memberId: string,
+    amount: number,
+    currency: CurrencyCode,
+    date?: string,
+    note?: string
+  ) => Promise<void>;
+  addBatchPiggyDeposit: (
+    amountPerPerson: number,
+    currency: CurrencyCode,
+    date?: string
+  ) => Promise<void>;
+  deletePiggyDeposit: (id: string) => Promise<void>;
 }
 
 const TripContext = createContext<TripContextType | null>(null);
@@ -68,11 +93,13 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeTab, setActiveTab] = useState<TabType>('timeline');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
   const [trips, setTrips] = useState<Trip[]>([]);
   const [activeTripId, setActiveTripId] = useState<string>('trip-japan-2026');
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
+  const [allPiggyDeposits, setAllPiggyDeposits] = useState<PiggyDeposit[]>([]);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [currentMemberId, setCurrentMemberIdState] = useState<string>(() => {
     return localStorage.getItem('triptab_member_active') || 'm-me';
@@ -116,7 +143,11 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Universal cloud sync helper
-  const syncTripToCloud = async (tripToSync: Trip, expensesToSync: Expense[]) => {
+  const syncTripToCloud = async (
+    tripToSync: Trip,
+    expensesToSync: Expense[],
+    depositsToSync: PiggyDeposit[] = []
+  ) => {
     if (!isSupabaseConfigured || !supabase || !tripToSync.tripCode) return;
     try {
       await supabase.from('rooms').upsert(
@@ -126,7 +157,11 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
           currency: tripToSync.baseCurrency,
           currency_symbol: tripToSync.currencySymbol,
           payer_id: tripToSync.members[0]?.id || '',
-          data: { trip: tripToSync, expenses: expensesToSync },
+          data: {
+            trip: tripToSync,
+            expenses: expensesToSync,
+            piggyDeposits: depositsToSync,
+          },
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'room_code' }
@@ -143,15 +178,23 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (tripCount === 0) {
         await db.trips.add(SEED_TRIP);
         await db.expenses.bulkAdd(SEED_EXPENSES);
+        await db.piggyDeposits.bulkAdd(SEED_PIGGY_DEPOSITS);
         // Upload initial seed trip to Supabase so it's available globally
-        await syncTripToCloud(SEED_TRIP, SEED_EXPENSES);
+        await syncTripToCloud(SEED_TRIP, SEED_EXPENSES, SEED_PIGGY_DEPOSITS);
+      } else {
+        const depositCount = await db.piggyDeposits.count();
+        if (depositCount === 0) {
+          await db.piggyDeposits.bulkAdd(SEED_PIGGY_DEPOSITS);
+        }
       }
 
       const loadedTrips = await db.trips.toArray();
       const loadedExpenses = await db.expenses.toArray();
+      const loadedDeposits = await db.piggyDeposits.toArray();
 
       setTrips(loadedTrips);
       setAllExpenses(loadedExpenses);
+      setAllPiggyDeposits(loadedDeposits);
 
       // Extract ?trip= parameter from current URL or hash
       let tripCodeParam: string | null = null;
@@ -181,7 +224,6 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsIdentityModalOpen(true);
           }
         } else if (isSupabaseConfigured && supabase) {
-          // If not found in local IndexedDB (e.g. friend scanned QR code on another phone)
           try {
             const { data } = await supabase
               .from('rooms')
@@ -192,16 +234,24 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (data && data.data && data.data.trip) {
               const remoteTrip: Trip = data.data.trip;
               const remoteExpenses: Expense[] = data.data.expenses || [];
+              const remoteDeposits: PiggyDeposit[] = data.data.piggyDeposits || [];
 
               await db.trips.put(remoteTrip);
               if (remoteExpenses.length > 0) {
                 await db.expenses.bulkPut(remoteExpenses);
+              }
+              if (remoteDeposits.length > 0) {
+                await db.piggyDeposits.bulkPut(remoteDeposits);
               }
 
               setTrips((prev) => [remoteTrip, ...prev.filter((t) => t.id !== remoteTrip.id)]);
               setAllExpenses((prev) => [
                 ...remoteExpenses,
                 ...prev.filter((e) => e.tripId !== remoteTrip.id),
+              ]);
+              setAllPiggyDeposits((prev) => [
+                ...remoteDeposits,
+                ...prev.filter((d) => d.tripId !== remoteTrip.id),
               ]);
               setActiveTripId(remoteTrip.id);
               setActiveTab('timeline');
@@ -231,6 +281,7 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const activeTrip = trips.find((t) => t.id === activeTripId) || trips[0];
   const expenses = allExpenses.filter((e) => e.tripId === activeTripId);
+  const piggyDeposits = allPiggyDeposits.filter((d) => d.tripId === activeTripId);
 
   // Realtime subscription for active trip
   useEffect(() => {
@@ -251,16 +302,24 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (newRecord?.data?.trip) {
             const remoteTrip: Trip = newRecord.data.trip;
             const remoteExpenses: Expense[] = newRecord.data.expenses || [];
+            const remoteDeposits: PiggyDeposit[] = newRecord.data.piggyDeposits || [];
 
             await db.trips.put(remoteTrip);
             if (remoteExpenses.length > 0) {
               await db.expenses.bulkPut(remoteExpenses);
+            }
+            if (remoteDeposits.length > 0) {
+              await db.piggyDeposits.bulkPut(remoteDeposits);
             }
 
             setTrips((prev) => prev.map((t) => (t.id === remoteTrip.id ? remoteTrip : t)));
             setAllExpenses((prev) => {
               const other = prev.filter((e) => e.tripId !== remoteTrip.id);
               return [...remoteExpenses, ...other];
+            });
+            setAllPiggyDeposits((prev) => {
+              const other = prev.filter((d) => d.tripId !== remoteTrip.id);
+              return [...remoteDeposits, ...other];
             });
           }
         }
@@ -287,10 +346,8 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addExpense = async (input: AddExpenseInput) => {
     if (!activeTrip) return;
 
-    // Convert amount into active trip's baseCurrency
     const baseAmount = convertCurrency(input.amount, input.currency, activeTrip.baseCurrency, customRates);
 
-    // Calculate split details
     const splitDetails: Record<string, number> = {};
     const membersToSplit =
       input.selectedMemberIds && input.selectedMemberIds.length > 0
@@ -337,7 +394,8 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Broadcast to Supabase
     await syncTripToCloud(
       activeTrip,
-      updatedExpenses.filter((e) => e.tripId === activeTrip.id)
+      updatedExpenses.filter((e) => e.tripId === activeTrip.id),
+      piggyDeposits
     );
   };
 
@@ -393,7 +451,8 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Broadcast to Supabase
     await syncTripToCloud(
       activeTrip,
-      updatedExpenses.filter((e) => e.tripId === activeTrip.id)
+      updatedExpenses.filter((e) => e.tripId === activeTrip.id),
+      piggyDeposits
     );
   };
 
@@ -404,7 +463,95 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeTrip) {
       await syncTripToCloud(
         activeTrip,
-        remaining.filter((e) => e.tripId === activeTrip.id)
+        remaining.filter((e) => e.tripId === activeTrip.id),
+        piggyDeposits
+      );
+    }
+  };
+
+  // Piggy Bank deposit methods
+  const addPiggyDeposit = async (
+    memberId: string,
+    amount: number,
+    currency: CurrencyCode,
+    date?: string,
+    note?: string
+  ) => {
+    if (!activeTrip || amount <= 0) return;
+
+    const baseAmount = convertCurrency(amount, currency, activeTrip.baseCurrency, customRates);
+
+    const newDeposit: PiggyDeposit = {
+      id: `piggy-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      tripId: activeTrip.id,
+      memberId,
+      amount,
+      currency,
+      baseAmount,
+      date: date || new Date().toISOString().split('T')[0],
+      note: note || '公账单人充值',
+      createdAt: new Date().toISOString(),
+    };
+
+    await db.piggyDeposits.add(newDeposit);
+    const updatedDeposits = [...allPiggyDeposits, newDeposit];
+    setAllPiggyDeposits(updatedDeposits);
+
+    await syncTripToCloud(
+      activeTrip,
+      expenses,
+      updatedDeposits.filter((d) => d.tripId === activeTrip.id)
+    );
+  };
+
+  const addBatchPiggyDeposit = async (
+    amountPerPerson: number,
+    currency: CurrencyCode,
+    date?: string
+  ) => {
+    if (!activeTrip || amountPerPerson <= 0) return;
+
+    const baseAmount = convertCurrency(
+      amountPerPerson,
+      currency,
+      activeTrip.baseCurrency,
+      customRates
+    );
+    const depositDate = date || new Date().toISOString().split('T')[0];
+
+    const newDeposits: PiggyDeposit[] = activeTrip.members.map((m, idx) => ({
+      id: `piggy-batch-${Date.now()}-${idx}`,
+      tripId: activeTrip.id,
+      memberId: m.id,
+      amount: amountPerPerson,
+      currency,
+      baseAmount,
+      date: depositDate,
+      note: '全员平摊公账集资',
+      createdAt: new Date().toISOString(),
+    }));
+
+    await db.piggyDeposits.bulkAdd(newDeposits);
+    const updatedDeposits = [...allPiggyDeposits, ...newDeposits];
+    setAllPiggyDeposits(updatedDeposits);
+
+    await syncTripToCloud(
+      activeTrip,
+      expenses,
+      updatedDeposits.filter((d) => d.tripId === activeTrip.id)
+    );
+  };
+
+  const deletePiggyDeposit = async (id: string) => {
+    await db.piggyDeposits.delete(id);
+    const remaining = allPiggyDeposits.filter((d) => d.id !== id);
+    setAllPiggyDeposits(remaining);
+
+    if (activeTrip) {
+      await syncTripToCloud(
+        activeTrip,
+        expenses,
+        remaining.filter((d) => d.tripId === activeTrip.id)
       );
     }
   };
@@ -429,7 +576,7 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
       baseCurrency,
       currencySymbol: getCurrencySymbol(baseCurrency),
       budget,
-      members: [{ id: 'm-me', name: '我 (组织者)', avatarColor: '#ff6b6b', isOwner: true }],
+      members: [{ id: 'm-me', name: '房主 (Host)', avatarColor: '#ff6b6b', isOwner: true }],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -440,7 +587,7 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveTab('timeline');
 
     // Immediately upload to Supabase so code is shareable instantly
-    await syncTripToCloud(newTrip, []);
+    await syncTripToCloud(newTrip, [], []);
 
     return newTrip.id;
   };
@@ -466,11 +613,13 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     await db.trips.put(updatedTrip);
     setTrips((prev) => prev.map((t) => (t.id === tripId ? updatedTrip : t)));
+    setCurrentMemberId(newMember.id);
 
     // Sync to Supabase
     await syncTripToCloud(
       updatedTrip,
-      allExpenses.filter((e) => e.tripId === tripId)
+      allExpenses.filter((e) => e.tripId === tripId),
+      allPiggyDeposits.filter((d) => d.tripId === tripId)
     );
   };
 
@@ -490,16 +639,24 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (data && data.data && data.data.trip) {
           found = data.data.trip;
           const remoteExpenses: Expense[] = data.data.expenses || [];
+          const remoteDeposits: PiggyDeposit[] = data.data.piggyDeposits || [];
 
           await db.trips.put(found!);
           if (remoteExpenses.length > 0) {
             await db.expenses.bulkPut(remoteExpenses);
+          }
+          if (remoteDeposits.length > 0) {
+            await db.piggyDeposits.bulkPut(remoteDeposits);
           }
 
           setTrips((prev) => [found!, ...prev.filter((t) => t.id !== found!.id)]);
           setAllExpenses((prev) => [
             ...remoteExpenses,
             ...prev.filter((e) => e.tripId !== found!.id),
+          ]);
+          setAllPiggyDeposits((prev) => [
+            ...remoteDeposits,
+            ...prev.filter((d) => d.tripId !== found!.id),
           ]);
         }
       } catch (err) {
@@ -527,7 +684,11 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const remaining = trips.filter((t) => t.id !== id && !t.isArchived);
       if (remaining.length > 0) setActiveTripId(remaining[0].id);
     }
-    await syncTripToCloud(updated, allExpenses.filter((e) => e.tripId === id));
+    await syncTripToCloud(
+      updated,
+      allExpenses.filter((e) => e.tripId === id),
+      allPiggyDeposits.filter((d) => d.tripId === id)
+    );
   };
 
   const unarchiveTrip = async (id: string) => {
@@ -537,14 +698,20 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await db.trips.put(updated);
     setTrips((prev) => prev.map((t) => (t.id === id ? updated : t)));
     setActiveTripId(id);
-    await syncTripToCloud(updated, allExpenses.filter((e) => e.tripId === id));
+    await syncTripToCloud(
+      updated,
+      allExpenses.filter((e) => e.tripId === id),
+      allPiggyDeposits.filter((d) => d.tripId === id)
+    );
   };
 
   const deleteTrip = async (id: string) => {
     await db.trips.delete(id);
     await db.expenses.where('tripId').equals(id).delete();
+    await db.piggyDeposits.where('tripId').equals(id).delete();
     setTrips((prev) => prev.filter((t) => t.id !== id));
     setAllExpenses((prev) => prev.filter((e) => e.tripId !== id));
+    setAllPiggyDeposits((prev) => prev.filter((d) => d.tripId !== id));
     if (activeTripId === id) {
       const remaining = trips.filter((t) => t.id !== id);
       if (remaining.length > 0) {
@@ -566,10 +733,14 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
         activeTrip,
         expenses,
         allExpenses,
+        piggyDeposits,
+        allPiggyDeposits,
         isDrawerOpen,
         setIsDrawerOpen,
         isShareModalOpen,
         setIsShareModalOpen,
+        isDepositModalOpen,
+        setIsDepositModalOpen,
         customRates,
         updateCustomRate,
         addExpense,
@@ -589,6 +760,9 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentMemberId,
         isIdentityModalOpen,
         setIsIdentityModalOpen,
+        addPiggyDeposit,
+        addBatchPiggyDeposit,
+        deletePiggyDeposit,
       }}
     >
       {children}

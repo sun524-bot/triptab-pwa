@@ -229,6 +229,23 @@ export const AddExpenseDrawer: React.FC = () => {
           <div>
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1.5">谁付的钱？</label>
             <div className="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar">
+              {/* Piggy Bank Option */}
+              <button
+                type="button"
+                onClick={() => {
+                  setPaidById('piggy-bank');
+                  setSelectedMemberIds(activeTrip.members.map((m) => m.id));
+                }}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs shrink-0 transition-all ${
+                  paidById === 'piggy-bank'
+                    ? 'bg-amber-500 text-slate-950 font-black border-amber-500 shadow-md shadow-amber-500/20'
+                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:border-amber-500'
+                }`}
+              >
+                <span className="text-sm">🐷</span>
+                <span>公账基金</span>
+              </button>
+
               {activeTrip.members.map((m) => {
                 const isSelected = paidById === m.id;
                 return (

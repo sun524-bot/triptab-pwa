@@ -9,6 +9,7 @@ import { SettlementView } from './components/SettlementView';
 import { SettingsView } from './components/SettingsView';
 import { ShareTripModal } from './components/ShareTripModal';
 import { JoinIdentityModal } from './components/JoinIdentityModal';
+import { PiggyDepositModal } from './components/PiggyDepositModal';
 
 const MainContent: React.FC = () => {
   const { activeTab } = useTrip();
@@ -44,6 +45,7 @@ const MainContent: React.FC = () => {
       <AddExpenseDrawer />
       <ShareTripModal />
       <JoinIdentityModal />
+      <PiggyDepositModal />
     </main>
   );
 };

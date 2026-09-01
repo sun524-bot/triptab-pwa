@@ -1,15 +1,22 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Expense, Trip } from '../types';
+import type { Expense, Trip, PiggyDeposit } from '../types';
 
 export const db = new Dexie('TripTabPwaDB') as Dexie & {
   trips: EntityTable<Trip, 'id'>;
   expenses: EntityTable<Expense, 'id'>;
+  piggyDeposits: EntityTable<PiggyDeposit, 'id'>;
 };
 
-// Define Schema
+// Define Schema with versioning
 db.version(1).stores({
   trips: 'id, tripCode, title, destination, startDate, isArchived, createdAt',
   expenses: 'id, tripId, category, currency, paidById, date, createdAt',
+});
+
+db.version(2).stores({
+  trips: 'id, tripCode, title, destination, startDate, isArchived, createdAt',
+  expenses: 'id, tripId, category, currency, paidById, date, createdAt',
+  piggyDeposits: 'id, tripId, memberId, date, createdAt',
 });
 
 // Seed data for immediate first-time experience
@@ -33,6 +40,53 @@ export const SEED_TRIP: Trip = {
   updatedAt: new Date().toISOString(),
 };
 
+export const SEED_PIGGY_DEPOSITS: PiggyDeposit[] = [
+  {
+    id: 'p-1',
+    tripId: 'trip-japan-2026',
+    memberId: 'm-me',
+    amount: 500,
+    currency: 'MYR',
+    baseAmount: 500,
+    date: '2026-08-25',
+    note: '出发前全员公账集资',
+    createdAt: '2026-08-25T08:00:00Z',
+  },
+  {
+    id: 'p-2',
+    tripId: 'trip-japan-2026',
+    memberId: 'm-alex',
+    amount: 500,
+    currency: 'MYR',
+    baseAmount: 500,
+    date: '2026-08-25',
+    note: '出发前全员公账集资',
+    createdAt: '2026-08-25T08:00:00Z',
+  },
+  {
+    id: 'p-3',
+    tripId: 'trip-japan-2026',
+    memberId: 'm-clara',
+    amount: 500,
+    currency: 'MYR',
+    baseAmount: 500,
+    date: '2026-08-25',
+    note: '出发前全员公账集资',
+    createdAt: '2026-08-25T08:00:00Z',
+  },
+  {
+    id: 'p-4',
+    tripId: 'trip-japan-2026',
+    memberId: 'm-daniel',
+    amount: 500,
+    currency: 'MYR',
+    baseAmount: 500,
+    date: '2026-08-25',
+    note: '出发前全员公账集资',
+    createdAt: '2026-08-25T08:00:00Z',
+  },
+];
+
 export const SEED_EXPENSES: Expense[] = [
   {
     id: 'exp-1',
@@ -42,7 +96,7 @@ export const SEED_EXPENSES: Expense[] = [
     amount: 5720,
     currency: 'JPY',
     baseAmount: 168.0, // in MYR
-    paidById: 'm-me',
+    paidById: 'piggy-bank', // Paid with Piggy Bank cash
     date: '2026-08-25',
     splitType: 'equal',
     splitDetails: { 'm-me': 42.0, 'm-alex': 42.0, 'm-clara': 42.0, 'm-daniel': 42.0 },
@@ -57,42 +111,42 @@ export const SEED_EXPENSES: Expense[] = [
     amount: 6800,
     currency: 'JPY',
     baseAmount: 200.0,
-    paidById: 'm-alex',
+    paidById: 'piggy-bank', // Paid with Piggy Bank cash
     date: '2026-08-25',
     splitType: 'equal',
     splitDetails: { 'm-me': 50.0, 'm-alex': 50.0, 'm-clara': 50.0, 'm-daniel': 50.0 },
-    createdAt: '2026-08-25T13:00:00Z',
-    updatedAt: '2026-08-25T13:00:00Z',
+    createdAt: '2026-08-25T13:15:00Z',
+    updatedAt: '2026-08-25T13:15:00Z',
   },
   {
     id: 'exp-3',
     tripId: 'trip-japan-2026',
-    title: '日本环球影城 USJ 快速通关券',
-    category: 'ticket',
+    title: '京都四条河原町居酒屋包厢',
+    category: 'food',
     amount: 64000,
     currency: 'JPY',
     baseAmount: 1880.0,
-    paidById: 'm-me',
+    paidById: 'm-clara', // Out-of-pocket paid by Clara
     date: '2026-08-26',
     splitType: 'equal',
     splitDetails: { 'm-me': 470.0, 'm-alex': 470.0, 'm-clara': 470.0, 'm-daniel': 470.0 },
-    createdAt: '2026-08-26T08:00:00Z',
-    updatedAt: '2026-08-26T08:00:00Z',
+    createdAt: '2026-08-26T19:40:00Z',
+    updatedAt: '2026-08-26T19:40:00Z',
   },
   {
     id: 'exp-4',
     tripId: 'trip-japan-2026',
-    title: '京都传统町屋民宿 (3晚)',
-    category: 'hotel',
+    title: '日本环球影城 USJ 快速通关券',
+    category: 'ticket',
     amount: 120000,
     currency: 'JPY',
     baseAmount: 3520.0,
-    paidById: 'm-clara',
+    paidById: 'm-clara', // Out-of-pocket paid by Clara
     date: '2026-08-27',
     splitType: 'equal',
     splitDetails: { 'm-me': 880.0, 'm-alex': 880.0, 'm-clara': 880.0, 'm-daniel': 880.0 },
-    createdAt: '2026-08-27T15:00:00Z',
-    updatedAt: '2026-08-27T15:00:00Z',
+    createdAt: '2026-08-27T08:00:00Z',
+    updatedAt: '2026-08-27T08:00:00Z',
   },
   {
     id: 'exp-5',
@@ -102,7 +156,7 @@ export const SEED_EXPENSES: Expense[] = [
     amount: 32000,
     currency: 'JPY',
     baseAmount: 940.0,
-    paidById: 'm-daniel',
+    paidById: 'm-daniel', // Out-of-pocket paid by Daniel
     date: '2026-08-28',
     splitType: 'equal',
     splitDetails: { 'm-me': 235.0, 'm-alex': 235.0, 'm-clara': 235.0, 'm-daniel': 235.0 },

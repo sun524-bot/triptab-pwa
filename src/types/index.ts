@@ -34,7 +34,7 @@ export interface Expense {
   amount: number;
   currency: CurrencyCode;
   baseAmount: number; // Normalized into trip base currency
-  paidById: string;
+  paidById: string; // memberId OR 'piggy-bank'
   date: string;
   splitType: SplitType;
   splitDetails: Record<string, number>; // memberId -> exact share in base currency
@@ -42,6 +42,18 @@ export interface Expense {
   note?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PiggyDeposit {
+  id: string;
+  tripId: string;
+  memberId: string; // Who put money into Piggy Bank
+  amount: number;
+  currency: CurrencyCode;
+  baseAmount: number;
+  date: string;
+  note?: string;
+  createdAt: string;
 }
 
 export interface Trip {
@@ -73,9 +85,12 @@ export interface MemberBalance {
   memberId: string;
   name: string;
   avatarColor: string;
-  totalPaid: number;
-  totalShare: number;
+  totalPaid: number; // Out-of-pocket payments made
+  totalShare: number; // Total consumed across all expenses
   netBalance: number; // positive = creditor (receives money), negative = debtor (owes money)
+  piggyDeposited: number; // Total contributed to Piggy Bank
+  piggyShareConsumed: number; // Total share of Piggy Bank expenses consumed
+  cashRefund: number; // Direct cash to take from Piggy Bank envelope
 }
 
 export interface CalculationStep {
@@ -84,4 +99,12 @@ export interface CalculationStep {
   aPaidForB: number;
   bPaidForA: number;
   netOwed: number; // if positive, A is owed by B
+}
+
+export interface PiggySummary {
+  totalDeposited: number;
+  totalSpent: number;
+  remainingCash: number;
+  cashRefunds: Record<string, number>; // memberId -> cash to take from envelope
+  residualTransfers: DebtTransfer[];
 }

@@ -33,7 +33,15 @@ export const CATEGORY_CONFIG: Record<
 };
 
 export const TimelineView: React.FC = () => {
-  const { activeTrip, expenses, deleteExpense, setIsDrawerOpen, setEditingExpense } = useTrip();
+  const {
+    activeTrip,
+    expenses,
+    piggyDeposits,
+    deleteExpense,
+    setIsDrawerOpen,
+    setEditingExpense,
+    setIsDepositModalOpen,
+  } = useTrip();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -69,6 +77,12 @@ export const TimelineView: React.FC = () => {
   const memberMap = new Map(activeTrip.members.map((m) => [m.id, m]));
   const totalSpent = expenses.reduce((sum, e) => sum + e.baseAmount, 0);
 
+  const totalPiggyDeposited = piggyDeposits.reduce((sum, d) => sum + d.baseAmount, 0);
+  const totalPiggySpent = expenses
+    .filter((e) => e.paidById === 'piggy-bank')
+    .reduce((sum, e) => sum + e.baseAmount, 0);
+  const piggyRemaining = Math.max(0, totalPiggyDeposited - totalPiggySpent);
+
   return (
     <div className="space-y-4 pb-20">
       {/* Trip Header Summary Card */}
@@ -98,6 +112,31 @@ export const TimelineView: React.FC = () => {
               </span>
             )}
           </div>
+        </div>
+
+        {/* Piggy Bank Integrated Bar */}
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-lg">🐷</span>
+            <div>
+              <div className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                <span>公账基金余额:</span>
+                <span className="text-amber-500 font-mono font-black">
+                  {activeTrip.currencySymbol} {piggyRemaining.toFixed(2)}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-400">
+                累计集资 {activeTrip.currencySymbol}{totalPiggyDeposited.toFixed(2)} • 公账已付 {activeTrip.currencySymbol}{totalPiggySpent.toFixed(2)}
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsDepositModalOpen(true)}
+            className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 text-xs font-bold border border-amber-500/30 transition-all flex items-center space-x-1 active:scale-95 shadow-xs"
+          >
+            <span>+ 集资充值</span>
+          </button>
         </div>
       </div>
 
@@ -204,14 +243,22 @@ export const TimelineView: React.FC = () => {
                               </h4>
 
                               <div className="flex items-center space-x-2 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                                {/* Payer Avatar Tag */}
-                                <span className="flex items-center space-x-1">
-                                  <span
-                                    style={{ backgroundColor: payer?.avatarColor || '#666' }}
-                                    className="w-2.5 h-2.5 rounded-full inline-block"
-                                  />
-                                  <span className="font-medium text-slate-700 dark:text-slate-300">{payer?.name || '未知付款人'} 付款</span>
-                                </span>
+                                {/* Payer Avatar Tag / Piggy Bank Badge */}
+                                {exp.paidById === 'piggy-bank' ? (
+                                  <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-[10px] border border-amber-500/30">
+                                    <span>🐷 公账付款</span>
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center space-x-1">
+                                    <span
+                                      style={{ backgroundColor: payer?.avatarColor || '#666' }}
+                                      className="w-2.5 h-2.5 rounded-full inline-block"
+                                    />
+                                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                                      {payer?.name || '未知付款人'} 付款
+                                    </span>
+                                  </span>
+                                )}
 
                                 <span>•</span>
 
