@@ -6,7 +6,7 @@ export const BottomNav: React.FC = () => {
   const { activeTab, setActiveTab, setIsDrawerOpen } = useTrip();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0e121b]/95 dark:bg-[#0e121b]/95 light:bg-white/95 backdrop-blur-lg border-t border-[#1f293d] dark:border-[#1f293d] light:border-slate-200 transition-colors">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0e121b]/95 backdrop-blur-lg border-t border-slate-200 dark:border-[#1f293d] transition-colors">
       <div className="max-w-lg mx-auto px-4 h-16 flex items-center justify-around relative">
         {/* Tab 1: Trips */}
         <button
@@ -14,7 +14,7 @@ export const BottomNav: React.FC = () => {
           className={`flex flex-col items-center justify-center w-12 py-1 transition-all active:scale-95 ${
             activeTab === 'trips'
               ? 'text-[#ff6b6b] font-bold'
-              : 'text-slate-400 dark:text-slate-400 light:text-slate-500 hover:text-slate-200'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
           <Map className="w-5 h-5 mb-0.5" />
@@ -27,7 +27,7 @@ export const BottomNav: React.FC = () => {
           className={`flex flex-col items-center justify-center w-12 py-1 transition-all active:scale-95 ${
             activeTab === 'timeline'
               ? 'text-[#ff6b6b] font-bold'
-              : 'text-slate-400 dark:text-slate-400 light:text-slate-500 hover:text-slate-200'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
           <ReceiptText className="w-5 h-5 mb-0.5" />
@@ -52,7 +52,7 @@ export const BottomNav: React.FC = () => {
           className={`flex flex-col items-center justify-center w-12 py-1 transition-all active:scale-95 ${
             activeTab === 'settle'
               ? 'text-[#ff6b6b] font-bold'
-              : 'text-slate-400 dark:text-slate-400 light:text-slate-500 hover:text-slate-200'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
           <Scale className="w-5 h-5 mb-0.5" />
@@ -65,7 +65,7 @@ export const BottomNav: React.FC = () => {
           className={`flex flex-col items-center justify-center w-12 py-1 transition-all active:scale-95 ${
             activeTab === 'settings'
               ? 'text-[#ff6b6b] font-bold'
-              : 'text-slate-400 dark:text-slate-400 light:text-slate-500 hover:text-slate-200'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
           <Settings className="w-5 h-5 mb-0.5" />

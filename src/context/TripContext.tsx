@@ -37,7 +37,10 @@ interface TripContextType {
   customRates: Partial<Record<CurrencyCode, number>>;
   updateCustomRate: (currency: CurrencyCode, rate: number) => void;
   addExpense: (input: AddExpenseInput) => Promise<void>;
+  updateExpense: (id: string, input: AddExpenseInput) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
+  editingExpense: Expense | null;
+  setEditingExpense: (exp: Expense | null) => void;
   createNewTrip: (title: string, destination: string, baseCurrency: CurrencyCode, budget?: number) => Promise<string>;
   addMemberToTrip: (tripId: string, memberName: string) => Promise<void>;
   joinTripByCode: (code: string, nickname: string) => Promise<boolean>;
@@ -59,6 +62,7 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [trips, setTrips] = useState<Trip[]>([]);
   const [activeTripId, setActiveTripId] = useState<string>('trip-japan-2026');
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const [customRates, setCustomRates] = useState<Partial<Record<CurrencyCode, number>>>(() => {
     const saved = localStorage.getItem('triptab_rates');
@@ -201,6 +205,54 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateExpense = async (id: string, input: AddExpenseInput) => {
+    if (!activeTrip) return;
+
+    const baseAmount = convertCurrency(input.amount, input.currency, activeTrip.baseCurrency, customRates);
+    const splitDetails: Record<string, number> = {};
+    const membersToSplit = (input.selectedMemberIds && input.selectedMemberIds.length > 0)
+      ? input.selectedMemberIds
+      : activeTrip.members.map((m) => m.id);
+
+    if (input.splitType === 'equal') {
+      const perPerson = Math.round((baseAmount / membersToSplit.length) * 100) / 100;
+      let allocated = 0;
+      membersToSplit.forEach((mId, idx) => {
+        if (idx === membersToSplit.length - 1) {
+          splitDetails[mId] = Math.round((baseAmount - allocated) * 100) / 100;
+        } else {
+          splitDetails[mId] = perPerson;
+          allocated += perPerson;
+        }
+      });
+    } else if (input.customShares) {
+      Object.assign(splitDetails, input.customShares);
+    }
+
+    const existing = allExpenses.find((e) => e.id === id);
+    const updated: Expense = {
+      id,
+      tripId: activeTrip.id,
+      title: input.title || '旅行杂项',
+      category: input.category,
+      amount: input.amount,
+      currency: input.currency,
+      baseAmount,
+      paidById: input.paidById,
+      date: input.date,
+      splitType: input.splitType,
+      splitDetails,
+      receiptImage: input.receiptImage ?? existing?.receiptImage,
+      note: input.note,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await db.expenses.put(updated);
+    setAllExpenses((prev) => prev.map((e) => (e.id === id ? updated : e)));
+    setEditingExpense(null);
+  };
+
   const deleteExpense = async (id: string) => {
     await db.expenses.delete(id);
     setAllExpenses((prev) => prev.filter((e) => e.id !== id));
@@ -294,7 +346,10 @@ export const TripProvider: React.FC<{ children: React.ReactNode }> = ({ children
         customRates,
         updateCustomRate,
         addExpense,
+        updateExpense,
         deleteExpense,
+        editingExpense,
+        setEditingExpense,
         createNewTrip,
         addMemberToTrip,
         joinTripByCode,

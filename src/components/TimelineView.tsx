@@ -14,8 +14,9 @@ import {
   Trash2,
   Users,
   Image as ImageIcon,
+  Pencil,
 } from 'lucide-react';
-import type { ExpenseCategory } from '../types';
+import type { Expense, ExpenseCategory } from '../types';
 
 export const CATEGORY_CONFIG: Record<
   ExpenseCategory,
@@ -32,7 +33,7 @@ export const CATEGORY_CONFIG: Record<
 };
 
 export const TimelineView: React.FC = () => {
-  const { activeTrip, expenses, deleteExpense, setIsDrawerOpen } = useTrip();
+  const { activeTrip, expenses, deleteExpense, setIsDrawerOpen, setEditingExpense } = useTrip();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -44,6 +45,11 @@ export const TimelineView: React.FC = () => {
       </div>
     );
   }
+
+  const handleStartEdit = (exp: Expense) => {
+    setEditingExpense(exp);
+    setIsDrawerOpen(true);
+  };
 
   // Filter expenses
   const filtered = expenses.filter((e) => {
@@ -183,76 +189,108 @@ export const TimelineView: React.FC = () => {
                     return (
                       <div
                         key={exp.id}
-                        className="p-3.5 rounded-2xl bg-[#161c28] dark:bg-[#161c28] light:bg-white border border-[#26334a] dark:border-[#26334a] light:border-slate-200 hover:border-[#ff6b6b]/40 transition-all flex items-center justify-between space-x-3"
+                        className="p-3.5 rounded-2xl bg-[#161c28] dark:bg-[#161c28] light:bg-white border border-[#26334a] dark:border-[#26334a] light:border-slate-200 hover:border-[#ff6b6b]/40 transition-all space-y-2.5"
                       >
-                        {/* Left: Category Icon + Title + Tags */}
-                        <div className="flex items-start space-x-3 truncate">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${cat.bg}`}>
-                            <CatIcon className="w-5 h-5" />
+                        <div className="flex items-center justify-between space-x-3">
+                          {/* Left: Category Icon + Title + Tags */}
+                          <div className="flex items-start space-x-3 truncate">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${cat.bg}`}>
+                              <CatIcon className="w-5 h-5" />
+                            </div>
+
+                            <div className="truncate">
+                              <h4 className="font-bold text-sm text-white dark:text-white light:text-slate-900 truncate">
+                                {exp.title}
+                              </h4>
+
+                              <div className="flex items-center space-x-2 text-[11px] text-slate-400 mt-1">
+                                {/* Payer Avatar Tag */}
+                                <span className="flex items-center space-x-1">
+                                  <span
+                                    style={{ backgroundColor: payer?.avatarColor || '#666' }}
+                                    className="w-2.5 h-2.5 rounded-full inline-block"
+                                  />
+                                  <span className="font-medium text-slate-300">{payer?.name || '未知付款人'} 付款</span>
+                                </span>
+
+                                <span>•</span>
+
+                                {/* Split Info */}
+                                <span className="flex items-center space-x-1 text-slate-400">
+                                  <Users className="w-3 h-3" />
+                                  <span>{splitCount}人分摊</span>
+                                </span>
+
+                                {/* Receipt Thumbnail Tag */}
+                                {exp.receiptImage && (
+                                  <button
+                                    onClick={() => setPreviewImage(exp.receiptImage || null)}
+                                    className="flex items-center space-x-0.5 text-[#ff6b6b] hover:underline"
+                                    title="查看发票图片"
+                                  >
+                                    <ImageIcon className="w-3 h-3" />
+                                    <span>小票</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="truncate">
-                            <h4 className="font-bold text-sm text-white dark:text-white light:text-slate-900 truncate">
-                              {exp.title}
-                            </h4>
+                          {/* Right: Amounts + Edit + Delete */}
+                          <div className="text-right shrink-0 flex items-center space-x-2">
+                            <div>
+                              {/* Converted Base Currency */}
+                              <div className="text-sm font-black text-[#ff6b6b]">
+                                {activeTrip.currencySymbol} {exp.baseAmount.toFixed(2)}
+                              </div>
 
-                            <div className="flex items-center space-x-2 text-[11px] text-slate-400 mt-1">
-                              {/* Payer Avatar Tag */}
-                              <span className="flex items-center space-x-1">
-                                <span
-                                  style={{ backgroundColor: payer?.avatarColor || '#666' }}
-                                  className="w-2.5 h-2.5 rounded-full inline-block"
-                                />
-                                <span className="font-medium text-slate-300">{payer?.name || '未知付款人'} 付款</span>
-                              </span>
-
-                              <span>•</span>
-
-                              {/* Split Info */}
-                              <span className="flex items-center space-x-1 text-slate-400">
-                                <Users className="w-3 h-3" />
-                                <span>{splitCount}人平分</span>
-                              </span>
-
-                              {/* Receipt Thumbnail Tag */}
-                              {exp.receiptImage && (
-                                <button
-                                  onClick={() => setPreviewImage(exp.receiptImage || null)}
-                                  className="flex items-center space-x-0.5 text-[#ff6b6b] hover:underline"
-                                  title="查看发票图片"
-                                >
-                                  <ImageIcon className="w-3 h-3" />
-                                  <span>小票</span>
-                                </button>
+                              {/* Original Local Currency */}
+                              {exp.currency !== activeTrip.baseCurrency && (
+                                <div className="text-[10px] text-slate-400 font-mono">
+                                  原币: {exp.currency} {exp.amount.toLocaleString()}
+                                </div>
                               )}
                             </div>
+
+                            {/* Edit Button */}
+                            <button
+                              onClick={() => handleStartEdit(exp)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-[#ff6b6b] hover:bg-[#ff6b6b]/10 transition-colors"
+                              title="修改该笔支出"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => deleteExpense(exp.id)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                              title="删除该笔支出"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
 
-                        {/* Right: Amounts + Delete */}
-                        <div className="text-right shrink-0 flex items-center space-x-3">
-                          <div>
-                            {/* Converted Base Currency */}
-                            <div className="text-sm font-black text-[#ff6b6b]">
-                              {activeTrip.currencySymbol} {exp.baseAmount.toFixed(2)}
-                            </div>
-
-                            {/* Original Local Currency */}
-                            {exp.currency !== activeTrip.baseCurrency && (
-                              <div className="text-[10px] text-slate-400 font-mono">
-                                原币: {exp.currency} {exp.amount.toLocaleString()}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Delete Button */}
-                          <button
-                            onClick={() => deleteExpense(exp.id)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                            title="删除该笔支出"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                        {/* Individual Split Breakdown Chips */}
+                        <div className="pt-2 border-t border-[#1f293d] flex items-center space-x-1.5 overflow-x-auto no-scrollbar text-[10px]">
+                          <span className="text-slate-500 font-bold shrink-0">分摊详情:</span>
+                          {Object.entries(exp.splitDetails).map(([mId, share]) => {
+                            const member = memberMap.get(mId);
+                            return (
+                              <span
+                                key={mId}
+                                className="px-2 py-0.5 rounded-md bg-[#0e121b] text-slate-300 border border-[#243046] shrink-0 flex items-center space-x-1 font-mono"
+                              >
+                                <span
+                                  style={{ backgroundColor: member?.avatarColor || '#666' }}
+                                  className="w-1.5 h-1.5 rounded-full inline-block"
+                                />
+                                <span>{member?.name || mId}:</span>
+                                <span className="font-bold text-[#ff6b6b]">{activeTrip.currencySymbol}{share.toFixed(2)}</span>
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
                     );

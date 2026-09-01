@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTrip } from '../context/TripContext';
 import { CATEGORY_CONFIG } from './TimelineView';
 import { convertCurrency, SUPPORTED_CURRENCIES } from '../engine/currencyConverter';
@@ -6,7 +6,16 @@ import { X, Camera, Check, Sparkles } from 'lucide-react';
 import type { CurrencyCode, ExpenseCategory, SplitType } from '../types';
 
 export const AddExpenseDrawer: React.FC = () => {
-  const { activeTrip, isDrawerOpen, setIsDrawerOpen, addExpense, customRates } = useTrip();
+  const {
+    activeTrip,
+    isDrawerOpen,
+    setIsDrawerOpen,
+    addExpense,
+    updateExpense,
+    editingExpense,
+    setEditingExpense,
+    customRates,
+  } = useTrip();
 
   const [title, setTitle] = useState('');
   const [amountStr, setAmountStr] = useState('');
@@ -19,6 +28,29 @@ export const AddExpenseDrawer: React.FC = () => {
     activeTrip ? activeTrip.members.map((m) => m.id) : []
   );
   const [receiptImage, setReceiptImage] = useState<string | undefined>(undefined);
+
+  // Synchronize state when editing an existing expense
+  useEffect(() => {
+    if (editingExpense) {
+      setTitle(editingExpense.title);
+      setAmountStr(editingExpense.amount.toString());
+      setCurrency(editingExpense.currency);
+      setCategory(editingExpense.category);
+      setPaidById(editingExpense.paidById);
+      setDate(editingExpense.date);
+      setSelectedMemberIds(Object.keys(editingExpense.splitDetails));
+      setReceiptImage(editingExpense.receiptImage);
+    } else if (activeTrip) {
+      setTitle('');
+      setAmountStr('');
+      setCurrency(activeTrip.baseCurrency);
+      setCategory('food');
+      setPaidById(activeTrip.members[0]?.id || 'm-me');
+      setDate(new Date().toISOString().split('T')[0]);
+      setSelectedMemberIds(activeTrip.members.map((m) => m.id));
+      setReceiptImage(undefined);
+    }
+  }, [editingExpense, activeTrip]);
 
   if (!isDrawerOpen || !activeTrip) return null;
 
@@ -46,11 +78,16 @@ export const AddExpenseDrawer: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const handleClose = () => {
+    setIsDrawerOpen(false);
+    setEditingExpense(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (numAmount <= 0) return;
 
-    await addExpense({
+    const expensePayload = {
       title: title.trim() || CATEGORY_CONFIG[category].name.split('/')[0],
       category,
       amount: numAmount,
@@ -60,13 +97,15 @@ export const AddExpenseDrawer: React.FC = () => {
       splitType,
       selectedMemberIds,
       receiptImage,
-    });
+    };
 
-    // Reset and close drawer
-    setTitle('');
-    setAmountStr('');
-    setReceiptImage(undefined);
-    setIsDrawerOpen(false);
+    if (editingExpense) {
+      await updateExpense(editingExpense.id, expensePayload);
+    } else {
+      await addExpense(expensePayload);
+    }
+
+    handleClose();
   };
 
   return (
@@ -77,11 +116,11 @@ export const AddExpenseDrawer: React.FC = () => {
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#ff6b6b] animate-pulse" />
             <h2 className="text-base font-black text-white dark:text-white light:text-slate-900">
-              记一笔旅行花费
+              {editingExpense ? '修改旅行花费' : '记一笔旅行花费'}
             </h2>
           </div>
           <button
-            onClick={() => setIsDrawerOpen(false)}
+            onClick={handleClose}
             className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-white/10"
           >
             <X className="w-5 h-5" />
@@ -277,7 +316,7 @@ export const AddExpenseDrawer: React.FC = () => {
             type="submit"
             className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#ff6b6b] to-[#ff8e53] text-white text-sm font-black shadow-lg shadow-[#ff6b6b]/40 active:scale-95 transition-transform"
           >
-            保存并记入账本
+            {editingExpense ? '保存修改并更新账本' : '保存并记入账本'}
           </button>
         </form>
       </div>
